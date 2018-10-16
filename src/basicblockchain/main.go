@@ -20,8 +20,10 @@ import (
 type Block struct {
 	Index		int
 	Timestamp	string
-	BPM			int
+	BPM		int
 	Hash		string
+	Username	string
+	Password 	string
 	PrevHash	string
 }
 
@@ -29,20 +31,22 @@ var Blockchain []Block
 
 //Concatenate block fields into SHA256 String for given Block
 func calculateHash(block Block) string{
-	record := string(block.Index) + block.Timestamp + string(block.BPM) + block.PrevHash
+	record := string(block.Index) + block.Timestamp + string(block.BPM) + block.Username + block.Password + block.PrevHash
 	h := sha256.New()
 	h.Write([]byte(record))
 	hashed := h.Sum(nil)
 	return hex.EncodeToString(hashed)
 }
 
-func generateBlock(oldBlock Block, BPM int) (Block, error){
+func generateBlock(oldBlock Block, BPM int, username string, password string) (Block, error){
 	var newBlock Block
 	t := time.Now()
 
 	newBlock.Index = oldBlock.Index + 1
 	newBlock.Timestamp = t.String()
 	newBlock.BPM = BPM
+	newBlock.Username = username
+	newBlock.Password = password
 	newBlock.PrevHash = oldBlock.Hash
 	newBlock.Hash = calculateHash(newBlock)
 
@@ -108,6 +112,8 @@ func handleGetBlockchain(w http.ResponseWriter, r *http.Request) {
 
 type Message struct {
 	BPM int
+	Username string
+	Password string
 }
 
 func handleWriteBlock(w http.ResponseWriter, r *http.Request) {
@@ -120,7 +126,7 @@ func handleWriteBlock(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	newBlock, err := generateBlock(Blockchain[len(Blockchain)-1], m.BPM)
+	newBlock, err := generateBlock(Blockchain[len(Blockchain)-1], m.BPM, m.Username, m.Password)
 	if err != nil {
 		respondWithJSON(w, r, http.StatusInternalServerError, m)
 		return
@@ -155,7 +161,7 @@ func main() {
 
 	go func() {
 		t := time.Now()
-		genesisBlock := Block{0, t.String(), 0, "", ""}
+		genesisBlock := Block{0, t.String(), 0, "", "", "", ""}
 		spew.Dump(genesisBlock)
 		Blockchain = append(Blockchain, genesisBlock)
 	}()
